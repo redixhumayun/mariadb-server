@@ -2159,6 +2159,8 @@ static int get_options(int argc, char **argv)
 
 static int read_and_execute(bool interactive)
 {
+  printf("I AM HERE\n");
+  printf("This is being run in interactive mode: %d\n", interactive);
   char	*line= NULL;
   char	in_string=0;
   ulong line_number=0;
@@ -2224,6 +2226,7 @@ static int read_and_execute(bool interactive)
     }
     else
     {
+      printf("Inside the else condition\n");
       char *prompt= (char*) (ml_comment ? "   /*> " :
                              glob_buffer.is_empty() ?  construct_prompt() :
 			     !in_string ? "    -> " :
@@ -2373,6 +2376,7 @@ static COMMANDS *find_command(char cmd_char)
 */
 static COMMANDS *find_command(char *name)
 {
+  printf("Finding the command\n");
   uint len;
   char *end;
   DBUG_ENTER("find_command");
@@ -3156,22 +3160,35 @@ static void get_current_db()
 
 int mysql_real_query_for_lazy(const char *buf, size_t length)
 {
+  DBUG_ENTER("mysql_real_query_for_lazy");
+  printf("Entering mysql_real_query_for_lazy\n");
   for (uint retry=0;; retry++)
   {
     int error;
-    if (!mysql_real_query(&mysql,buf,(ulong)length))
+    if (!mysql_real_query(&mysql,buf,(ulong)length)) {
+      DBUG_PRINT("info",("query: %s", buf));
+      DBUG_RETURN(0);
       return 0;
+    }
     error= put_error(&mysql);
     if (mysql_errno(&mysql) != CR_SERVER_GONE_ERROR || retry > 1 ||
-        !opt_reconnect)
+        !opt_reconnect) {
+          DBUG_PRINT("error",("error: %d, retry: %d", error, retry));
+          DBUG_RETURN(error);
+          return error;
+        }
+    if (reconnect()) {
+      DBUG_PRINT("error",("error: %d, retry: %d", error, retry));
+      DBUG_RETURN(error);
       return error;
-    if (reconnect())
-      return error;
+    }
   }
+  DBUG_RETURN(0);
 }
 
 int mysql_store_result_for_lazy(MYSQL_RES **result)
 {
+  printf("Entering mysql_store_result_for_lazy\n");
   if ((*result=mysql_store_result(&mysql)))
     return 0;
 
@@ -3394,6 +3411,7 @@ com_charset(String *buffer __attribute__((unused)), char *line)
 static int
 com_go(String *buffer,char *line __attribute__((unused)))
 {
+  DBUG_ENTER("com_go");
   char		buff[200]; /* about 110 chars used so far */
   char		time_buff[53+3+1]; /* time max + space & parens + NUL */
   MYSQL_RES	*result;
@@ -3565,6 +3583,8 @@ end:
     get_current_db();
 
   executing_query= 0;
+  DBUG_PRINT("exit", ("error: %d", error));
+  DBUG_RETURN(error);
   return error;				/* New command follows */
 }
 
@@ -4175,6 +4195,7 @@ static void print_last_query_cost()
   MYSQL_RES    *result;
   MYSQL_ROW    cur;
 
+  printf("Entering print_last_query_cost\n");
   query= "show status like 'last_query_cost'";
   mysql_real_query_for_lazy(query, strlen(query));
   mysql_store_result_for_lazy(&result);

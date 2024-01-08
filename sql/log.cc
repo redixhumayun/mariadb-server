@@ -5513,11 +5513,13 @@ end2:
 bool Event_log::write_event(Log_event *ev, binlog_cache_data *data,
                             IO_CACHE *file)
 {
+  DBUG_PRINT("debug", ("Inside Event_log::write_event"));
   return write_event(ev, ev->select_checksum_alg(data), data, file);
 }
 
 bool MYSQL_BIN_LOG::write_event(Log_event *ev)
 {
+  DBUG_PRINT("debug", ("Inside MYSQL_BIN_LOG::write_event"));
   return write_event(ev, ev->select_checksum_alg(NULL), 0, &log_file);
 }
 
@@ -5525,6 +5527,7 @@ bool Event_log::write_event(Log_event *ev,
                             enum_binlog_checksum_alg checksum_alg,
                             binlog_cache_data *cache_data, IO_CACHE *file)
 {
+  DBUG_PRINT("debug", ("Inside Event_log::write_event but this is an overloaded method called from the first one"));
   Log_event_writer writer(file, cache_data, checksum_alg, &crypto);
   if (crypto.scheme && file == &log_file)
   {
@@ -6667,6 +6670,8 @@ MYSQL_BIN_LOG::find_in_binlog_state(uint32 domain_id, uint32 server_id_arg,
   return gtid != NULL;
 }
 
+
+//  This is a custom function that will write a separate log event
 
 bool
 MYSQL_BIN_LOG::lookup_domain_in_binlog_state(uint32 domain_id,

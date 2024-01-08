@@ -3830,6 +3830,10 @@ mysql_execute_command(THD *thd, bool is_called_from_prepared_stmt)
   }
 #endif /* WITH_WSREP */
 
+  printf("Printing out the contents of lex\n");
+  printf("lex->sql_command = %d\n", lex->sql_command);
+  printf("lex->sphead = %p\n", lex->sphead);
+
   switch (lex->sql_command) {
 
   case SQLCOM_SHOW_EVENTS:
@@ -7824,6 +7828,7 @@ void mysql_parse(THD *thd, char *rawbuf, uint length,
   else
   {
     /* Update statistics for getting the query from the cache */
+    printf("Found the query in the cache\n");
     thd->lex->sql_command= SQLCOM_SELECT;
     thd->m_statement_psi=
       MYSQL_REFINE_STATEMENT(thd->m_statement_psi,

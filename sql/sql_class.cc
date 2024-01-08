@@ -7786,6 +7786,7 @@ int THD::binlog_query(THD::enum_binlog_query_type qtype, char const *query_arg,
       flush the pending rows event if necessary.
     */
     {
+      DBUG_PRINT("debug", ("Logging as a statement query type"));
       int error = 0;
 
       /*
@@ -7804,6 +7805,7 @@ int THD::binlog_query(THD::enum_binlog_query_type qtype, char const *query_arg,
       {
         Query_log_event qinfo(this, query_arg, query_len, is_trans, direct,
                               suppress_use, errcode);
+        DBUG_PRINT("debug", ("Printing out info from the query log event: {query: %s, catalog: %s, db: %s}", qinfo.query, qinfo.catalog, qinfo.db));
         error= mysql_bin_log.write(&qinfo);
       }
       /*
