@@ -25,6 +25,11 @@
     Abort logging when we get an error in reading or writing log files
 */
 
+//  Custom inlcludes start
+#include <fstream>
+//  Custom includes end
+
+
 #include "mariadb.h"		/* NO_EMBEDDED_ACCESS_CHECKS */
 #include "sql_priv.h"
 #include "log.h"
@@ -6671,8 +6676,6 @@ MYSQL_BIN_LOG::find_in_binlog_state(uint32 domain_id, uint32 server_id_arg,
 }
 
 
-//  This is a custom function that will write a separate log event
-
 bool
 MYSQL_BIN_LOG::lookup_domain_in_binlog_state(uint32 domain_id,
                                              rpl_gtid *out_gtid)
@@ -6708,6 +6711,25 @@ MYSQL_BIN_LOG::check_strict_gtid_sequence(uint32 domain_id,
                                                             no_error);
 }
 
+void CUSTOM_REPLICATION_LOG::write_log_event(Log_event *log_event, THD* thread) {
+  DBUG_ENTER("CUSTOM_REPLICATION_LOG::write_log_event");
+  Query_log_event* query_log_event = dynamic_cast<Query_log_event*>(log_event);
+  if (query_log_event == nullptr) {
+    DBUG_PRINT("debug", ("This is not a query log event. Returning without logging"));
+    return;
+  }
+  std::string log_file_path = "/usr/local/mysql/data/custom-data/custom-binlog.txt";
+  std::ofstream log_file(log_file_path, std::ios::app);
+
+  if (!log_file.is_open()) {
+    DBUG_PRINT("debug", ("Something went wrong while opening the custom binlog file"));
+    return;
+  }
+  log_file << "Thread: " << thread->id << " Query: " << query_log_event->query << " Catalog: " << query_log_event->catalog << " DB: " << query_log_event->db << std::endl;
+  log_file.flush();
+  DBUG_VOID_RETURN;
+}
+
 
 /**
   Write an event to the binary log. If with_annotate != NULL and
@@ -6724,6 +6746,8 @@ bool MYSQL_BIN_LOG::write(Log_event *event_info, my_bool *with_annotate)
   bool using_trans= event_info->use_trans_cache();
   bool direct= event_info->use_direct_logging();
   ulong UNINIT_VAR(prev_binlog_id);
+  CUSTOM_REPLICATION_LOG custom_log;
+  custom_log.write_log_event(event_info, thd);
   DBUG_ENTER("MYSQL_BIN_LOG::write(Log_event *)");
 
   /*
@@ -12036,15 +12060,6 @@ IO_CACHE *wsrep_get_cache(THD * thd, bool is_transactional)
   return NULL;
 }
 
-bool wsrep_is_binlog_cache_empty(THD *thd)
-{
-  binlog_cache_mngr *cache_mngr=
-      (binlog_cache_mngr *) thd_get_ha_data(thd, binlog_hton);
-  if (cache_mngr)
-    return cache_mngr->trx_cache.empty() && cache_mngr->stmt_cache.empty();
-  return true;
-}
-
 void wsrep_thd_binlog_trx_reset(THD * thd)
 {
   DBUG_ENTER("wsrep_thd_binlog_trx_reset");
@@ -12103,9 +12118,12 @@ void wsrep_register_binlog_handler(THD *thd, bool trx)
     /*
       Set an implicit savepoint in order to be able to truncate a trx-cache.
     */
-    my_off_t pos= 0;
-    binlog_trans_log_savepos(thd, &pos);
-    cache_mngr->trx_cache.set_prev_position(pos);
+    if (cache_mngr->trx_cache.get_prev_position() == MY_OFF_T_UNDEF)
+    {
+      my_off_t pos= 0;
+      binlog_trans_log_savepos(thd, &pos);
+      cache_mngr->trx_cache.set_prev_position(pos);
+    }
 
     /*
       Set callbacks in order to be able to call commmit or rollback.

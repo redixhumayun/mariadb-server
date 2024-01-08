@@ -598,6 +598,11 @@ class binlog_cache_data;
 struct rpl_gtid;
 struct wait_for_commit;
 
+class CUSTOM_REPLICATION_LOG {
+  public:
+  void write_log_event(Log_event *log_event, THD* thread);
+};
+
 class MYSQL_BIN_LOG: public TC_LOG, private Event_log
 {
   /** The instrumentation key to use for @ LOCK_index. */

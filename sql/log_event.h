@@ -5427,7 +5427,6 @@ private:
 
 inline int Log_event_writer::write(Log_event *ev)
 {
-  printf("I AM WRITING EVENT\n");
   int res= ev->write(this);
   add_status(ev->logged_status());
   return res;
